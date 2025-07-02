@@ -1,0 +1,68 @@
+# --- Node/Vite/Frontend ---
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# --- Rust/Tauri/Backend ---
+src-tauri/target/
+src-tauri/gen/
+src-tauri/gen/schemas/
+Cargo.lock
+
+# --- Go ---
+*.exe
+*.test
+*.out
+
+# --- System/Editor/OS ---
+.DS_Store
+Thumbs.db
+*.sw?
+.idea/
+.vscode/
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# --- Env/Secrets ---
+.env
+.env.*
+
+# --- Misc ---
+logs/
+*.local
+
+# --- Python ---
+__pycache__/
+*.pyc
+
+# --- Build/Cache ---
+.cache/
+
+# --- Ignore lock files in frontend (optional, uncomment if needed) ---
+# frontend/package-lock.json
+# frontend/yarn.lock
+# frontend/pnpm-lock.yaml 
+
+# Logs
+logs
+dev-debug.log
+# Dependency directories
+# Environment variables
+# Editor directories and files
+.idea
+.vscode
+# OS specific
+
+# Task files
+# tasks.json
+# tasks/ 
