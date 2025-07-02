@@ -34,6 +34,12 @@ function suggestAlternatives(command) {
     return suggestions[command] || [];
 }
 
+import { initializeFileExplorer } from './modules/ui.js';
+
+document.addEventListener('DOMContentLoaded', () => {
+    initializeFileExplorer();
+});
+
 async function executeTerminalCommand(command) {
     if (!command.trim()) return;
     

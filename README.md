@@ -1,206 +1,115 @@
-# AirIde - AI-Powered IDE
+# AirIde
 
-A modern, AI-enhanced integrated development environment built with Tauri, React, and Monaco Editor.
+IDE de escritorio moderno con integración de IA, explorador de archivos, chat multi-modelo y backend en Go.
 
-## Features
+## Funcionalidades principales
 
-### 🤖 AI Integration
-- **Real-time AI Chat**: Communicate with an AI assistant directly in the IDE
-- **Multiple AI Providers**: Easily switch between OpenAI, Claude, DeepSeek, Gemini, Qwen, Mistral and more
-- **Code Context Awareness**: AI can see and understand your current code
-- **Smart Suggestions**: Get AI-powered code suggestions and explanations
-- **Thinking State**: Visual feedback when AI is processing your request
+### 🗂️ Explorador y gestión de archivos
+- Selección de carpeta de proyecto al iniciar (usando `showDirectoryPicker`)
+- Navegación de archivos y carpetas en árbol
+- Abrir, crear, renombrar, eliminar y guardar archivos
+- Operaciones de archivos siempre relativas a la carpeta seleccionada
+- Iconos por tipo de archivo
+- Auto-guardado y feedback visual
 
-### 📁 File Management
-- **File Explorer**: Browse and manage files in a tree-like structure
-- **File Operations**: Create, open, save, rename, and delete files
-- **Auto-save**: Automatic saving of changes with visual feedback
-- **File Icons**: Visual file type indicators for different programming languages
+### 🧠 Integración de IA (Chat y ayuda)
+- Chat AI contextual integrado en la UI
+- Soporte para múltiples proveedores/modelos:
+  - OpenAI (GPT-3.5, GPT-4, GPT-4o)
+  - Anthropic (Claude 3)
+  - DeepSeek, DeepSeekOpenRoute
+  - Qwen3_32BOpenRoute
+  - MistralNemoOpenRoute
+- Configuración visual de modelo y API Key (modal moderno)
+- Cambia de modelo/proveedor en cualquier momento
+- El AI puede ver el código abierto y responder sobre él
+- Notificaciones tipo toast para feedback
 
-### 🎨 Multi-Language Support
-- **Syntax Highlighting**: Support for 20+ programming languages
-- **Language Detection**: Automatic language detection based on file extension
-- **Monaco Editor**: Full-featured code editor with IntelliSense
-- **Supported Languages**: JavaScript, TypeScript, Python, Java, C++, Go, Rust, PHP, Ruby, SQL, HTML, CSS, JSON, YAML, Markdown, and more
+### 📝 Editor de código
+- Basado en Monaco Editor (VS Code)
+- Detección automática de lenguaje por extensión
+- Soporte para: JS, TS, Python, Go, Rust, HTML, CSS, JSON, YAML, Markdown, y más
+- Autocompletado, resaltado de sintaxis, errores en tiempo real
+- Atajos: Ctrl+S (guardar), Ctrl+N (nuevo), Ctrl+O (abrir), etc.
 
-### 🔧 Editor Features
-- **AI Code Assistant**: Button to ask AI about selected code or entire file
-- **Keyboard Shortcuts**: 
-  - `Ctrl/Cmd + S`: Save current file
-  - `Ctrl/Cmd + N`: Create new file
-  - `Ctrl/Cmd + O`: Open file (placeholder)
-- **Auto-completion**: Intelligent code suggestions
-- **Error Detection**: Real-time syntax and error checking
-- **Code Formatting**: Automatic code formatting on paste and type
+### 🖥️ Backend Go
+- API REST para operaciones de archivos y chat AI
+- Todas las rutas de archivos relativas a la carpeta seleccionada (enviada por el frontend)
+- Modularidad: cada proveedor AI es un servicio en `src-tauri/backend/services/`
+- Logs detallados para debug
 
-### 🎯 User Experience
-- **Modern UI**: Clean, dark theme with professional appearance
-- **Responsive Design**: Adapts to different screen sizes
-- **Status Indicators**: Visual feedback for save operations and errors
-- **Smooth Animations**: Polished interactions and transitions
+## Cómo usar
 
-## Architecture
-
-### Frontend
-- **Monaco Editor**: Microsoft's VS Code editor component
-- **Vanilla JavaScript**: No framework dependencies for maximum performance
-- **CSS3**: Modern styling with flexbox and CSS Grid
-- **Web Workers**: Background processing for language services
-- **AI Model Configuration**: Select and configure API keys for multiple providers from the UI
-
-### Backend
-- **Go**: High-performance backend server
-- **RESTful API**: Clean API design for file operations and AI chat
-- **CORS Support**: Cross-origin resource sharing enabled
-- **File System Operations**: Safe file handling with error management
-- **Modular AI Services**: Each AI provider is implemented as a separate service in `src-tauri/backend/services` following SOLID and DRY principles
-
-#### Supported AI Providers/Models
-- **OpenAI**: GPT-4, GPT-3.5 Turbo
-- **Anthropic**: Claude 3, Claude 2
-- **DeepSeek**: DeepSeek V3 0324
-- **DeepSeekOpenRoute**: DeepSeek V3 0324 via OpenRouter
-- **Qwen3-32BOpenRoute**: Qwen 32B via OpenRouter
-- **MistralNemoOpenRoute**: Mistral Nemo via OpenRouter
-- **Gemini**: Gemini 2.5 Flash
-
-## Getting Started
-
-### Prerequisites
-- Node.js 16+ and npm
-- Go 1.19+
-- Tauri CLI (optional, for desktop app)
-
-### Installation
-
-1. **Clone the repository**
+1. **Inicia el backend:**
    ```bash
-   git clone <repository-url>
-   cd AirIde
+   cd src-tauri/backend
+   go run main.go
    ```
-
-2. **Install frontend dependencies**
+2. **Inicia el frontend:**
    ```bash
    cd frontend
    npm install
-   ```
-
-3. **Start the backend server**
-   ```bash
-   cd ../src-tauri/backend
-   go run main.go
-   ```
-
-4. **Start the frontend development server**
-   ```bash
-   cd ../../frontend
    npm run dev
    ```
+3. **Abre en el navegador:**
+   http://localhost:5173
+4. **Selecciona la carpeta de tu proyecto** al abrir la app (diálogo nativo)
+5. ¡Listo! Ya puedes explorar, editar y chatear con IA sobre tu código.
 
-5. **Open your browser** and navigate to `http://localhost:5173`
+## Endpoints principales
 
-### API Endpoints
-
-#### Chat API
-- `POST /chat` - Send a message to the AI assistant
+### POST /files
+- Operaciones: `read`, `write`, `create`, `delete`, `rename`, `list`
+- Body ejemplo:
   ```json
   {
-    "message": "Your question here",
-    "context": "Optional code context",
-    "model": "gpt-4", // or any supported model
-    "provider": "OpenAI", // or Anthropic, DeepSeek, DeepSeekOpenRoute, Qwen3_32BOpenRoute, MistralNemoOpenRoute, Gemini
-    "api_key": "YOUR_API_KEY"
-  }
-  ```
-  - The backend will route the request to the correct AI service based on `provider` and `model`.
-  - If no model or provider is specified, sensible defaults are used for each provider.
-
-#### File Operations API
-- `POST /files` - Perform file operations
-  ```json
-  {
-    "operation": "read|write|list|create|delete|rename",
-    "path": "file/path",
-    "content": "file content (for write/create)",
-    "newPath": "new path (for rename)"
+    "operation": "read",
+    "path": "src/main.js",
+    "projectBaseDir": "C:/Users/usuario/MiProyecto"
   }
   ```
 
-## Usage
+### POST /chat
+- Body ejemplo:
+  ```json
+  {
+    "message": "¿Qué hace esta función?",
+    "model": "gpt-4o",
+    "provider": "OpenAI",
+    "api_key": "sk-..."
+  }
+  ```
 
-### Basic Workflow
+## Problemas/Fallos conocidos
 
-1. **Create a new file**: Click the "+" button in the file explorer
-2. **Start coding**: The editor will automatically detect the language
-3. **Ask AI for help**: Use the chat panel and select/configure your preferred AI model
-4. **Save your work**: Files auto-save, or use Ctrl+S
+- [ ] **No funciona en navegadores que no soportan `showDirectoryPicker`** (solo Chrome, Edge, Tauri)
+- [ ] **No hay integración Git ni depuración** (planeado)
+- [ ] **No hay sistema de extensiones**
+- [ ] **No hay colaboración en tiempo real**
+- [ ] **El backend solo soporta rutas relativas a la carpeta seleccionada; si el usuario mueve archivos fuera de esa carpeta, no se pueden abrir**
+- [ ] **No hay sandboxing: cuidado con archivos peligrosos**
+- [ ] **El backend no valida rutas fuera del projectBaseDir (mejorar seguridad)**
+- [ ] **No hay tests automatizados**
+- [ ] **El listado de directorios (`listFiles`, `listDirectoryContents`) no respeta el projectBaseDir y puede mostrar rutas incorrectas o fallar si la carpeta base no es la raíz del backend.**
 
-### AI Assistant
+## Estructura del proyecto
 
-The AI assistant can help you with:
-- Code explanations and documentation
-- Bug fixing and debugging
-- Code optimization suggestions
-- Best practices and patterns
-- Learning new programming concepts
-
-#### Configuring AI Models
-- Go to the "Configure Models" option in the menu (or use `Ctrl+Shift+I`)
-- Select your preferred model and enter your API key
-- Supported providers: OpenAI, Anthropic, DeepSeek, DeepSeekOpenRoute, Qwen3-32BOpenRoute, MistralNemoOpenRoute, Gemini
-- You can switch models at any time
-
-#### Adding New AI Providers (Backend)
-- Add a new service file in `src-tauri/backend/services/` following the SOLID/DRY pattern (see existing services for examples)
-- Update the handler in `main.go` to route requests to your new service based on `provider`
-- Update the frontend model list if you want it selectable from the UI
-
-### File Management
-
-- **Open files**: Click on any file in the explorer
-- **Create files**: Use the "+" button or Ctrl+N
-- **Delete files**: Hover over a file and click the trash icon
-- **Rename files**: Right-click and select rename
-
-## Development
-
-### Project Structure
 ```
 AirIde/
-├── frontend/           # Frontend application
+├── frontend/           # Frontend (Monaco, UI, lógica)
 │   ├── src/
-│   ├── main.js        # Main application logic
-│   └── style.css      # Styles
+│   ├── main.js
+│   └── style.css
 ├── src-tauri/
-│   └── backend/       # Go backend server
-│       ├── main.go    # Server implementation
-│       └── services/  # Modular AI service implementations
+│   └── backend/       # Backend Go
+│       ├── main.go
+│       └── services/  # Servicios AI
 └── README.md
 ```
 
-### Contributing
+## Licencia
+MIT
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+---
 
-### Future Enhancements
-
-- [ ] Git integration
-- [ ] Debugger support
-- [ ] Extensions system
-- [ ] Cloud sync
-- [ ] Collaborative editing
-- [ ] Advanced AI features (code generation, refactoring)
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- Monaco Editor by Microsoft
-- Tauri framework
-- Space Grotesk and Noto Sans fonts by Google Fonts 
+**AirIde** © 2025

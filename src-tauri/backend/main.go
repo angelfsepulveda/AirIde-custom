@@ -16,6 +16,9 @@ import (
     . "backend/services"
 )
 
+// Define project root for all file operations
+var projectRoot = ""
+
 
 type ChatMessage struct {
     Role    string `json:"role"`
@@ -38,11 +41,14 @@ type ChatResponse struct {
 }
 
 type FileOperation struct {
-    Operation string `json:"operation"`
-    Path      string `json:"path"`
-    Content   string `json:"content,omitempty"`
-    NewPath   string `json:"newPath,omitempty"`
+    Operation      string `json:"operation"`
+    Path           string `json:"path"`
+    Content        string `json:"content,omitempty"`
+    NewPath        string `json:"newPath,omitempty"`
+    ProjectBaseDir string `json:"projectBaseDir,omitempty"`
 }
+// Variable global temporal para pasar el projectBaseDir entre handler y función
+var currentFileOpProjectBaseDir = ""
 
 type FileResponse struct {
     Success bool   `json:"success"`
@@ -235,46 +241,67 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
     fmt.Printf("[BACK] FileOperation: %+v\n", req)
-    // ...existing code...
+    // Guardar el projectBaseDir para la operación actual
+    currentFileOpProjectBaseDir = req.ProjectBaseDir
+    var resp FileResponse
+    switch req.Operation {
+    case "read":
+        resp = readFile(req.Path)
+    case "write":
+        resp = writeFile(req.Path, req.Content)
+    case "create":
+        resp = createFile(req.Path, req.Content)
+    case "delete":
+        resp = deleteFile(req.Path)
+    case "rename":
+        resp = renameFile(req.Path, req.NewPath)
+    case "list":
+        resp = listFiles(req.Path)
+    default:
+        resp = FileResponse{
+            Success: false,
+            Message: "Unknown file operation: " + req.Operation,
+        }
+    }
+    // Limpiar la variable global después de la operación
+    currentFileOpProjectBaseDir = ""
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(resp)
 }
 
 func readFile(path string) FileResponse {
-    fmt.Printf("readFile called with path: %s\n", path)
-    
-    // Si el path es relativo, convertirlo a absoluto desde el directorio raíz del proyecto
+    fmt.Printf("[BACK] readFile called with path: '%s'\n", path)
+    // Si el path es relativo, unirlo al projectBaseDir si está presente, si no al projectRoot
     if !filepath.IsAbs(path) {
-        absPath, err := filepath.Abs("../../" + path)
-        if err != nil {
-            fmt.Printf("Error resolving path: %v\n", err)
-            return FileResponse{
-                Success: false,
-                Message: "Error resolving path: " + err.Error(),
-            }
+        if currentFileOpProjectBaseDir != "" {
+            path = filepath.Join(currentFileOpProjectBaseDir, path)
+            fmt.Printf("[BACK] Resolved absolute path: '%s' (projectBaseDir: '%s')\n", path, currentFileOpProjectBaseDir)
+        } else {
+            path = filepath.Join(projectRoot, path)
+            fmt.Printf("[BACK] Resolved absolute path: '%s' (projectRoot: '%s')\n", path, projectRoot)
         }
-        path = absPath
-        fmt.Printf("Resolved absolute path: %s\n", path)
     }
-    
     // Verificar si el archivo existe
     if _, err := os.Stat(path); os.IsNotExist(err) {
-        fmt.Printf("File does not exist: %s\n", path)
+        fmt.Printf("[BACK] File does not exist: '%s'\n", path)
         return FileResponse{
             Success: false,
             Message: "File does not exist: " + path,
         }
     }
-    
     content, err := ioutil.ReadFile(path)
     if err != nil {
-        fmt.Printf("Error reading file: %v\n", err)
+        fmt.Printf("[BACK] Error reading file: %v\n", err)
         return FileResponse{
             Success: false,
             Message: "Error reading file: " + err.Error(),
         }
     }
-    
-    fmt.Printf("Successfully read file: %s, content length: %d\n", path, len(content))
-    
+    preview := string(content)
+    if len(preview) > 80 {
+        preview = preview[:80] + "..."
+    }
+    fmt.Printf("[BACK] Successfully read file: '%s', content length: %d, preview: '%s'\n", path, len(content), preview)
     return FileResponse{
         Success: true,
         Message: "File read successfully",
@@ -285,18 +312,10 @@ func readFile(path string) FileResponse {
 func writeFile(path string, content string) FileResponse {
     fmt.Printf("writeFile called with path: %s, content length: %d\n", path, len(content))
     
-    // Si el path es relativo, convertirlo a absoluto desde el directorio raíz del proyecto
+    // Si el path es relativo, unirlo al projectRoot
     if !filepath.IsAbs(path) {
-        absPath, err := filepath.Abs("../../" + path)
-        if err != nil {
-            fmt.Printf("Error resolving path: %v\n", err)
-            return FileResponse{
-                Success: false,
-                Message: "Error resolving path: " + err.Error(),
-            }
-        }
-        path = absPath
-        fmt.Printf("Resolved absolute path: %s\n", path)
+        path = filepath.Join(projectRoot, path)
+        fmt.Printf("[BACK] Resolved absolute path: '%s' (projectRoot: '%s')\n", path, projectRoot)
     }
     
     // Crear el directorio si no existe
@@ -325,8 +344,8 @@ func writeFile(path string, content string) FileResponse {
 
 func listFiles(dirPath string) FileResponse {
     if dirPath == "" {
-        // Cambiar al directorio raíz del proyecto (dos niveles arriba del backend)
-        dirPath = "../../"
+        // Cambiar al directorio raíz del proyecto
+        dirPath = "./"
     }
     
     // Obtener el directorio absoluto
@@ -354,7 +373,7 @@ func listFiles(dirPath string) FileResponse {
         }
         
         // Calcular la ruta relativa desde el directorio raíz del proyecto
-        relativePath, err := filepath.Rel("../../", filepath.Join(absPath, file.Name()))
+        relativePath, err := filepath.Rel("./", filepath.Join(absPath, file.Name()))
         if err != nil {
             relativePath = file.Name()
         }
@@ -378,7 +397,7 @@ func listFiles(dirPath string) FileResponse {
 func listDirectoryContents(dirPath string) FileResponse {
     // Si el path es relativo, convertirlo a absoluto desde el directorio raíz del proyecto
     if !filepath.IsAbs(dirPath) {
-        absPath, err := filepath.Abs("../../" + dirPath)
+        absPath, err := filepath.Abs(dirPath)
         if err != nil {
             return FileResponse{
                 Success: false,
@@ -404,7 +423,7 @@ func listDirectoryContents(dirPath string) FileResponse {
         }
         
         // Calcular la ruta relativa desde el directorio raíz del proyecto
-        relativePath, err := filepath.Rel("../../", filepath.Join(dirPath, file.Name()))
+        relativePath, err := filepath.Rel("./", filepath.Join(dirPath, file.Name()))
         if err != nil {
             relativePath = file.Name()
         }
@@ -428,18 +447,10 @@ func listDirectoryContents(dirPath string) FileResponse {
 func createFile(path string, content string) FileResponse {
     fmt.Printf("createFile called with path: %s, content length: %d\n", path, len(content))
     
-    // Si el path es relativo, convertirlo a absoluto desde el directorio raíz del proyecto
+    // Si el path es relativo, unirlo al projectRoot
     if !filepath.IsAbs(path) {
-        absPath, err := filepath.Abs("../../" + path)
-        if err != nil {
-            fmt.Printf("Error resolving path: %v\n", err)
-            return FileResponse{
-                Success: false,
-                Message: "Error resolving path: " + err.Error(),
-            }
-        }
-        path = absPath
-        fmt.Printf("Resolved absolute path: %s\n", path)
+        path = filepath.Join(projectRoot, path)
+        fmt.Printf("[BACK] Resolved absolute path: '%s' (projectRoot: '%s')\n", path, projectRoot)
     }
     
     err := ioutil.WriteFile(path, []byte(content), 0644)
@@ -461,14 +472,8 @@ func createFile(path string, content string) FileResponse {
 
 func deleteFile(path string) FileResponse {
     if !filepath.IsAbs(path) {
-        absPath, err := filepath.Abs("../../" + path)
-        if err != nil {
-            return FileResponse{
-                Success: false,
-                Message: "Error resolving path: " + err.Error(),
-            }
-        }
-        path = absPath
+        path = filepath.Join(projectRoot, path)
+        fmt.Printf("[BACK] Resolved absolute path: '%s' (projectRoot: '%s')\n", path, projectRoot)
     }
     
     err := os.Remove(path)
@@ -488,31 +493,14 @@ func deleteFile(path string) FileResponse {
 func renameFile(oldPath, newPath string) FileResponse {
     fmt.Printf("renameFile called with oldPath: %s, newPath: %s\n", oldPath, newPath)
     
-    // Si los paths son relativos, convertirlos a absolutos desde el directorio raíz del proyecto
+    // Si los paths son relativos, unirlos al projectRoot
     if !filepath.IsAbs(oldPath) {
-        absPath, err := filepath.Abs("../../" + oldPath)
-        if err != nil {
-            fmt.Printf("Error resolving old path: %v\n", err)
-            return FileResponse{
-                Success: false,
-                Message: "Error resolving old path: " + err.Error(),
-            }
-        }
-        oldPath = absPath
-        fmt.Printf("Resolved old absolute path: %s\n", oldPath)
+        oldPath = filepath.Join(projectRoot, oldPath)
+        fmt.Printf("[BACK] Resolved old absolute path: '%s' (projectRoot: '%s')\n", oldPath, projectRoot)
     }
-    
     if !filepath.IsAbs(newPath) {
-        absPath, err := filepath.Abs("../../" + newPath)
-        if err != nil {
-            fmt.Printf("Error resolving new path: %v\n", err)
-            return FileResponse{
-                Success: false,
-                Message: "Error resolving new path: " + err.Error(),
-            }
-        }
-        newPath = absPath
-        fmt.Printf("Resolved new absolute path: %s\n", newPath)
+        newPath = filepath.Join(projectRoot, newPath)
+        fmt.Printf("[BACK] Resolved new absolute path: '%s' (projectRoot: '%s')\n", newPath, projectRoot)
     }
     
     // Verificar si el archivo original existe
@@ -700,112 +688,120 @@ func executeCommand(command, workingDir string) TerminalResponse {
 }
 
 func main() {
-	// Inicializar cliente OpenAI si hay API key
-	apiKey := os.Getenv("OPENAI_API_KEY")
-	if apiKey != "" {
-		openaiClient = NewOpenAIClient(apiKey, "gpt-3.5-turbo")
-		fmt.Println("OpenAI client enabled.")
-	} else {
-		fmt.Println("OpenAI client not enabled. Set OPENAI_API_KEY env var to enable.")
-	}
+    // Set projectRoot to the parent of the backend directory (i.e., the workspace root)
+    wd, err := os.Getwd()
+    if err != nil {
+        panic("Cannot get working directory: " + err.Error())
+    }
+    // If running from src-tauri/backend, set projectRoot to its parent
+    projectRoot = filepath.Dir(wd)
+    fmt.Printf("[BACK] Project root set to: %s\n", projectRoot)
+    // Inicializar cliente OpenAI si hay API key
+    apiKey := os.Getenv("OPENAI_API_KEY")
+    if apiKey != "" {
+        openaiClient = NewOpenAIClient(apiKey, "gpt-3.5-turbo")
+        fmt.Println("OpenAI client enabled.")
+    } else {
+        fmt.Println("OpenAI client not enabled. Set OPENAI_API_KEY env var to enable.")
+    }
 
-	http.HandleFunc("/chat", chatHandler)
-	http.HandleFunc("/files", fileHandler)
-	http.HandleFunc("/terminal", terminalHandler)
-	http.HandleFunc("/", handleOptions)
+    http.HandleFunc("/chat", chatHandler)
+    http.HandleFunc("/files", fileHandler)
+    http.HandleFunc("/terminal", terminalHandler)
+    http.HandleFunc("/", handleOptions)
 
-	// Endpoint para listar archivos
-	http.HandleFunc("/api/files", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+    // Endpoint para listar archivos
+    http.HandleFunc("/api/files", func(w http.ResponseWriter, r *http.Request) {
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
+        if r.Method == "OPTIONS" {
+            w.WriteHeader(http.StatusOK)
+            return
+        }
 
-		if r.Method == "GET" {
-			dirPath := r.URL.Query().Get("dir")
-			response := listFiles(dirPath)
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(response)
-		}
-	})
+        if r.Method == "GET" {
+            dirPath := r.URL.Query().Get("dir")
+            response := listFiles(dirPath)
+            w.Header().Set("Content-Type", "application/json")
+            json.NewEncoder(w).Encode(response)
+        }
+    })
 
-	// Endpoint para listar contenido de un directorio específico
-	http.HandleFunc("/api/directory", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+    // Endpoint para listar contenido de un directorio específico
+    http.HandleFunc("/api/directory", func(w http.ResponseWriter, r *http.Request) {
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
+        if r.Method == "OPTIONS" {
+            w.WriteHeader(http.StatusOK)
+            return
+        }
 
-		if r.Method == "GET" {
-			dirPath := r.URL.Query().Get("path")
-			response := listDirectoryContents(dirPath)
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(response)
-		}
-	})
+        if r.Method == "GET" {
+            dirPath := r.URL.Query().Get("path")
+            response := listDirectoryContents(dirPath)
+            w.Header().Set("Content-Type", "application/json")
+            json.NewEncoder(w).Encode(response)
+        }
+    })
 
-	// Add new endpoint to check available commands
-	http.HandleFunc("/api/check-command", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+    // Add new endpoint to check available commands
+    http.HandleFunc("/api/check-command", func(w http.ResponseWriter, r *http.Request) {
+        if r.Method != "POST" {
+            http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+            return
+        }
 
-		var req struct {
-			Command string `json:"command"`
-		}
+        var req struct {
+            Command string `json:"command"`
+        }
 
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
+        if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        }
 
-		// Check if command exists
-		var shell string
-		var args []string
+        // Check if command exists
+        var shell string
+        var args []string
 
-		if runtime.GOOS == "windows" {
-			if _, err := os.Stat("/proc/version"); err == nil {
-				shell = "/bin/bash"
-				args = []string{"-c", "which " + req.Command + " || where " + req.Command}
-			} else {
-				shell = "powershell.exe"
-				args = []string{"-Command", "Get-Command " + req.Command + " -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source"}
-			}
-		} else {
-			shell = "/bin/bash"
-			args = []string{"-c", "which " + req.Command}
-		}
+        if runtime.GOOS == "windows" {
+            if _, err := os.Stat("/proc/version"); err == nil {
+                shell = "/bin/bash"
+                args = []string{"-c", "which " + req.Command + " || where " + req.Command}
+            } else {
+                shell = "powershell.exe"
+                args = []string{"-Command", "Get-Command " + req.Command + " -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source"}
+            }
+        } else {
+            shell = "/bin/bash"
+            args = []string{"-c", "which " + req.Command}
+        }
 
-		cmd := exec.Command(shell, args...)
-		output, err := cmd.Output()
+        cmd := exec.Command(shell, args...)
+        output, err := cmd.Output()
 
-		response := map[string]interface{}{
-			"command": req.Command,
-			"exists":  err == nil,
-			"path":    strings.TrimSpace(string(output)),
-		}
+        response := map[string]interface{}{
+            "command": req.Command,
+            "exists":  err == nil,
+            "path":    strings.TrimSpace(string(output)),
+        }
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
-	})
+        w.Header().Set("Content-Type", "application/json")
+        json.NewEncoder(w).Encode(response)
+    })
 
-	fmt.Println("AirIde Backend Server listening on http://localhost:8080")
-	fmt.Println("Available endpoints:")
-	fmt.Println("  POST /chat - AI chat functionality")
-	fmt.Println("  POST /files - File operations")
-	fmt.Println("  POST /terminal - Terminal command execution")
+    fmt.Println("AirIde Backend Server listening on http://localhost:8080")
+    fmt.Println("Available endpoints:")
+    fmt.Println("  POST /chat - AI chat functionality")
+    fmt.Println("  POST /files - File operations")
+    fmt.Println("  POST /terminal - Terminal command execution")
 
-	err := http.ListenAndServe(":8080", nil)
-	if err != nil {
-		panic(err)
-	}
+    err = http.ListenAndServe(":8080", nil)
+    if err != nil {
+        panic(err)
+    }
 }
