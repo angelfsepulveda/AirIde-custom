@@ -1,115 +1,119 @@
 # AirIde
 
-IDE de escritorio moderno con integración de IA, explorador de archivos, chat multi-modelo y backend en Go.
+Modern desktop IDE with AI integration, file explorer, multi-model chat, and Go backend.
 
-## Funcionalidades principales
+## Main Features
 
-### 🗂️ Explorador y gestión de archivos
-- Selección de carpeta de proyecto al iniciar (usando `showDirectoryPicker`)
-- Navegación de archivos y carpetas en árbol
-- Abrir, crear, renombrar, eliminar y guardar archivos
-- Operaciones de archivos siempre relativas a la carpeta seleccionada
-- Iconos por tipo de archivo
-- Auto-guardado y feedback visual
+### 🗂️ File Explorer & Management
+- Project folder selection at startup (using `showDirectoryPicker`)
+- Tree navigation of files and folders
+- Open, create, rename, delete, and save files
+- All file operations are always relative to the selected folder
+- File type icons
+- Auto-save and visual feedback
 
-### 🧠 Integración de IA (Chat y ayuda)
-- Chat AI contextual integrado en la UI
-- Soporte para múltiples proveedores/modelos:
+### 🧠 AI Integration (Chat & Help)
+- Contextual AI chat integrated in the UI
+- Support for multiple providers/models:
   - OpenAI (GPT-3.5, GPT-4, GPT-4o)
   - Anthropic (Claude 3)
   - DeepSeek, DeepSeekOpenRoute
   - Qwen3_32BOpenRoute
   - MistralNemoOpenRoute
-- Configuración visual de modelo y API Key (modal moderno)
-- Cambia de modelo/proveedor en cualquier momento
-- El AI puede ver el código abierto y responder sobre él
-- Notificaciones tipo toast para feedback
+- Visual model/API Key configuration (modern modal)
+- Switch model/provider at any time
+- AI can see the open code and answer about it
+- Toast notifications for feedback
 
-### 📝 Editor de código
-- Basado en Monaco Editor (VS Code)
-- Detección automática de lenguaje por extensión
-- Soporte para: JS, TS, Python, Go, Rust, HTML, CSS, JSON, YAML, Markdown, y más
-- Autocompletado, resaltado de sintaxis, errores en tiempo real
-- Atajos: Ctrl+S (guardar), Ctrl+N (nuevo), Ctrl+O (abrir), etc.
+### 📝 Code Editor
+- Based on Monaco Editor (VS Code)
+- Automatic language detection by extension
+- Supports: JS, TS, Python, Go, Rust, HTML, CSS, JSON, YAML, Markdown, and more
+- Autocomplete, syntax highlighting, real-time errors
+- Shortcuts: Ctrl+S (save), Ctrl+N (new), Ctrl+O (open), etc.
 
-### 🖥️ Backend Go
-- API REST para operaciones de archivos y chat AI
-- Todas las rutas de archivos relativas a la carpeta seleccionada (enviada por el frontend)
-- Modularidad: cada proveedor AI es un servicio en `src-tauri/backend/services/`
-- Logs detallados para debug
+### 🖥️ Go Backend
+- REST API for file operations and AI chat
+- All file paths are relative to the selected folder (sent from frontend)
+- Modular: each AI provider is a service in `src-tauri/backend/services/`
+- Detailed logs for debugging
 
-## Cómo usar
+## How to Use
 
-1. **Inicia el backend:**
+1. **Start the backend:**
    ```bash
    cd src-tauri/backend
    go run main.go
    ```
-2. **Inicia el frontend:**
+2. **Start the frontend:**
    ```bash
    cd frontend
    npm install
    npm run dev
    ```
-3. **Abre en el navegador:**
+3. **Open in your browser:**
    http://localhost:5173
-4. **Selecciona la carpeta de tu proyecto** al abrir la app (diálogo nativo)
-5. ¡Listo! Ya puedes explorar, editar y chatear con IA sobre tu código.
+4. **Select your project folder** when prompted (native dialog)
+5. Done! You can now explore, edit, and chat with AI about your code.
 
-## Endpoints principales
+## Main Endpoints
 
 ### POST /files
-- Operaciones: `read`, `write`, `create`, `delete`, `rename`, `list`
-- Body ejemplo:
+- Operations: `read`, `write`, `create`, `delete`, `rename`, `list`
+- Example body:
   ```json
   {
     "operation": "read",
     "path": "src/main.js",
-    "projectBaseDir": "C:/Users/usuario/MiProyecto"
+    "projectBaseDir": "C:/Users/youruser/MyProject"
   }
   ```
 
 ### POST /chat
-- Body ejemplo:
+- Example body:
   ```json
   {
-    "message": "¿Qué hace esta función?",
+    "message": "What does this function do?",
     "model": "gpt-4o",
     "provider": "OpenAI",
     "api_key": "sk-..."
   }
   ```
 
-## Problemas/Fallos conocidos
+## Known Issues / Limitations
 
-- [ ] **No funciona en navegadores que no soportan `showDirectoryPicker`** (solo Chrome, Edge, Tauri)
-- [ ] **No hay integración Git ni depuración** (planeado)
-- [ ] **No hay sistema de extensiones**
-- [ ] **No hay colaboración en tiempo real**
-- [ ] **El backend solo soporta rutas relativas a la carpeta seleccionada; si el usuario mueve archivos fuera de esa carpeta, no se pueden abrir**
-- [ ] **No hay sandboxing: cuidado con archivos peligrosos**
-- [ ] **El backend no valida rutas fuera del projectBaseDir (mejorar seguridad)**
-- [ ] **No hay tests automatizados**
-- [ ] **El listado de directorios (`listFiles`, `listDirectoryContents`) no respeta el projectBaseDir y puede mostrar rutas incorrectas o fallar si la carpeta base no es la raíz del backend.**
+- [ ] **Does not work in browsers that do not support `showDirectoryPicker`** (only Chrome, Edge, Tauri)
+- [ ] **No Git integration or debugging** (planned)
+- [ ] **No extension system**
+- [ ] **No real-time collaboration**
+- [ ] **Backend only supports paths relative to the selected folder; if you move files outside, you can't open them**
+- [ ] **No sandboxing: be careful with dangerous files**
+- [ ] **Backend does not validate paths outside projectBaseDir (security improvement needed)**
+- [ ] **No automated tests**
+- [ ] **Directory listing (`listFiles`, `listDirectoryContents`) does not respect projectBaseDir and may show incorrect paths or fail if the base folder is not the backend root.**
 
-## Estructura del proyecto
+## Project Structure
 
 ```
 AirIde/
-├── frontend/           # Frontend (Monaco, UI, lógica)
+├── frontend/           # Frontend (Monaco, UI, logic)
 │   ├── src/
 │   ├── main.js
 │   └── style.css
 ├── src-tauri/
-│   └── backend/       # Backend Go
+│   └── backend/       # Go Backend
 │       ├── main.go
-│       └── services/  # Servicios AI
+│       └── services/  # AI Services
 └── README.md
 ```
 
-## Licencia
+## License
 MIT
 
 ---
 
 **AirIde** © 2025
+
+---
+
+> **This project was created 100% by AI, with no human intervention.**
